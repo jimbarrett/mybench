@@ -48,8 +48,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
-      - name: Build
+      - name: Build (Linux)
+        if: matrix.platform == 'linux'
         run: wails build -platform ${{ matrix.platform }}/${{ matrix.arch }} -tags webkit2_41
+
+      - name: Build (macOS / Windows)
+        if: matrix.platform != 'linux'
+        run: wails build -platform ${{ matrix.platform }}/${{ matrix.arch }}
 
       - name: Compress macOS app bundle
         if: matrix.platform == 'darwin'
