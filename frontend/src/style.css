@@ -1,0 +1,114 @@
+:root {
+  /* Backgrounds */
+  --bg-primary: #1a1b26;
+  --bg-secondary: #16161e;
+  --bg-sidebar: #1f2029;
+  --bg-hover: #292a37;
+  --bg-active: #33354a;
+  --bg-input: #24253a;
+
+  /* Text */
+  --text-primary: #c0caf5;
+  --text-secondary: #787c99;
+  --text-muted: #565a7e;
+
+  /* Borders */
+  --border: #2e2f3e;
+
+  /* Accents */
+  --accent: #7aa2f7;
+  --accent-hover: #89b4fa;
+  --accent-dim: #3d59a1;
+  --mark-bg: #3d59a1;
+
+  /* Status */
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --error: #f7768e;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.mono {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+button {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+button:hover {
+  background: var(--bg-hover);
+}
+
+button.primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+button.primary:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+input, select, textarea {
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-dim);
+}
