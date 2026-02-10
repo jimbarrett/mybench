@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: amd64
+            artifact: mybench
+          - os: macos-latest
+            platform: darwin
+            arch: universal
+            artifact: mybench.app
+          - os: windows-latest
+            platform: windows
+            arch: amd64
+            artifact: mybench.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Build
+        run: wails build -platform ${{ matrix.platform }}/${{ matrix.arch }} -tags webkit2_41
+
+      - name: Compress macOS app bundle
+        if: matrix.platform == 'darwin'
+        working-directory: build/bin
+        run: zip -r mybench.app.zip mybench.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mybench-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            build/bin/${{ matrix.artifact }}${{ matrix.platform == 'darwin' && '.zip' || '' }}
+            ${{ matrix.platform != 'darwin' && format('build/bin/{0}', matrix.artifact) || '' }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          # Linux
+          cp artifacts/mybench-linux-amd64/mybench release/mybench_${TAG}_linux_amd64
+          chmod +x release/mybench_${TAG}_linux_amd64
+
+          # macOS
+          cp artifacts/mybench-darwin-universal/mybench.app.zip release/mybench_${TAG}_darwin_universal.app.zip
+
+          # Windows
+          cp artifacts/mybench-windows-amd64/mybench.exe release/mybench_${TAG}_windows_amd64.exe
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            Download the binary for your platform below.
+
+            **Linux:**
+            ```bash
+            chmod +x mybench_*_linux_amd64
+            ./mybench_*_linux_amd64
+            ```
+            Requires `libwebkit2gtk-4.1` to be installed.
+
+            **macOS:**
+            Unzip and drag `mybench.app` to your Applications folder.
+
+            **Windows:**
+            Run `mybench_*_windows_amd64.exe` directly.
+          files: release/*
