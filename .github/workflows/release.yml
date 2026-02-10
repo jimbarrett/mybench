@@ -31,7 +31,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: tylertravisty/wails-build-action@v1
+      - uses: dAppServer/wails-build-action@v2.2
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
