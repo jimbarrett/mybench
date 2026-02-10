@@ -11,7 +11,7 @@
   "version": "2",
   "projectdir": ".",
   "build:dir": "build",
-  "build:tags": "",
+  "build:tags": "webkit2_41",
   "outputfilename": "mybench",
   "OutputType": "",
   "Platform": "",
