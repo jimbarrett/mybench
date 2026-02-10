@@ -19,7 +19,7 @@ jobs:
             artifact: mybench
           - os: macos-latest
             platform: darwin
-            arch: universal
+            arch: arm64
             artifact: mybench.app
           - os: windows-latest
             platform: windows
@@ -91,7 +91,7 @@ jobs:
           chmod +x release/mybench_${TAG}_linux_amd64
 
           # macOS
-          cp artifacts/mybench-darwin-universal/mybench.app.zip release/mybench_${TAG}_darwin_universal.app.zip
+          cp artifacts/mybench-darwin-arm64/mybench.app.zip release/mybench_${TAG}_darwin_arm64.app.zip
 
           # Windows
           cp artifacts/mybench-windows-amd64/mybench.exe release/mybench_${TAG}_windows_amd64.exe
@@ -112,7 +112,7 @@ jobs:
             ```
             Requires `libwebkit2gtk-4.1` to be installed.
 
-            **macOS:**
+            **macOS (Apple Silicon):**
             Unzip and drag `mybench.app` to your Applications folder.
 
             **Windows:**
