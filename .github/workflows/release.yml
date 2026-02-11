@@ -17,9 +17,6 @@ jobs:
           - name: mybench
             platform: linux/amd64
             os: ubuntu-latest
-          - name: mybench
-            platform: windows/amd64
-            os: windows-latest
 
     runs-on: ${{ matrix.build.os }}
 
