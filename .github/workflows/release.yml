@@ -25,6 +25,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Inject version
+        run: sed -i "s/var version = \"dev\"/var version = \"${GITHUB_REF_NAME}\"/" main.go
+
       - uses: dAppServer/wails-build-action@main
         with:
           build-name: ${{ matrix.build.name }}

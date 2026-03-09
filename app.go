@@ -18,6 +18,7 @@ import (
 // App is the main application struct. All Wails-bound methods live here.
 type App struct {
 	ctx     context.Context
+	version string
 	store   *store.Store
 	vault   *crypto.Vault
 	connMgr *database.Manager
@@ -27,8 +28,9 @@ type App struct {
 }
 
 // NewApp creates a new App instance.
-func NewApp() *App {
+func NewApp(version string) *App {
 	return &App{
+		version: version,
 		connMgr: database.NewManager(),
 		cancels: make(map[string]context.CancelFunc),
 	}
@@ -783,6 +785,6 @@ func (a *App) Ping() map[string]string {
 		"status":  "ok",
 		"go":      runtime.Version(),
 		"app":     "mybench",
-		"version": "0.1.0",
+		"version": a.version,
 	}
 }
