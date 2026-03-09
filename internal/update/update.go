@@ -67,9 +67,9 @@ func Check(currentVersion string) (*ReleaseInfo, error) {
 		PublishedAt:    release.PublishedAt,
 	}
 
-	assetName := AssetName()
+	platformSuffix := AssetName()
 	for _, asset := range release.Assets {
-		if asset.Name == assetName {
+		if strings.HasPrefix(asset.Name, "mybench_") && strings.HasSuffix(asset.Name, platformSuffix) {
 			info.DownloadURL = asset.BrowserDownloadURL
 			break
 		}
@@ -136,10 +136,10 @@ func Apply(downloadURL string) error {
 	return nil
 }
 
-// AssetName returns the expected release asset filename for the current platform.
-// The wails-build-action names artifacts as "{name}-{os}-{arch}".
+// AssetName returns the platform suffix used to match release assets.
+// GoReleaser names binaries as "mybench_{version}_{os}_{arch}".
 func AssetName() string {
-	return fmt.Sprintf("mybench-%s-%s", runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
 }
 
 // CompareVersions returns true if latest is newer than current.

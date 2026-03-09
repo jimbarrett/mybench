@@ -14,7 +14,7 @@ dev:
 	@echo "  make dev-frontend"
 
 dev-backend:
-	go run . --no-browser
+	go run . _serve --no-browser
 
 dev-frontend:
 	cd frontend && npm run dev
