@@ -1,6 +1,6 @@
 # mybench
 
-A personal MySQL database management tool. Built as a native desktop app with [Wails](https://wails.io/) (Go backend + Vue 3 frontend).
+A personal MySQL database management tool. Go backend (Echo) + Vue 3 frontend, compiled into a single binary with `//go:embed`.
 
 ## What it does
 
@@ -19,27 +19,56 @@ A personal MySQL database management tool. Built as a native desktop app with [W
 
 ## Tech stack
 
-- **Backend:** Go, Wails v2, `database/sql` + `go-sql-driver/mysql`, SQLite for local storage (`modernc.org/sqlite`)
+- **Backend:** Go, Echo v4, `database/sql` + `go-sql-driver/mysql`, SQLite for local storage (`modernc.org/sqlite`)
 - **Frontend:** Vue 3 (Composition API, TypeScript), CodeMirror 6, scoped CSS (no UI framework)
 - **Encryption:** AES-256-GCM with argon2id key derivation
-- **Build:** Single native binary via Wails
+- **Build:** Single binary with embedded frontend via `//go:embed`
 
 ## Building
 
-Requires [Go 1.21+](https://go.dev/), [Node.js 18+](https://nodejs.org/), and [Wails CLI](https://wails.io/docs/gettingstarted/installation).
+Requires [Go 1.21+](https://go.dev/) and [Node.js 18+](https://nodejs.org/).
 
 ```bash
 # Install frontend dependencies
 cd frontend && npm install && cd ..
 
-# Development (hot reload)
-wails dev -tags webkit2_41
+# Production build (builds frontend, then embeds into Go binary)
+make build
 
-# Production build
-wails build -tags webkit2_41
+# Run it
+./bin/mybench
 ```
 
-> The `-tags webkit2_41` flag is required on Ubuntu 24.04+ (ships webkit2gtk-4.1 instead of 4.0).
+## Development
+
+Run the backend and frontend in separate terminals:
+
+```bash
+# Terminal 1: Go backend on :8080
+make dev-backend
+
+# Terminal 2: Vite dev server on :5173 (hot reload, proxies /api to backend)
+make dev-frontend
+```
+
+Open `http://localhost:5173` in your browser.
+
+## Usage
+
+```bash
+# Start with default settings (opens browser, port 8080)
+./bin/mybench
+
+# Custom port
+./bin/mybench 9090
+
+# Don't open browser automatically
+./bin/mybench --no-browser
+
+# Check version / update
+./bin/mybench version
+./bin/mybench update
+```
 
 ## Status
 

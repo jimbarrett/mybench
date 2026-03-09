@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { database } from '../wailsjs/go/models'
+import type { UserDetail } from '../lib/types'
 import {
-  GetUserDetail,
-  DropUser,
-  ChangeUserPassword,
-  GrantPrivileges,
-  RevokePrivileges,
-} from '../wailsjs/go/main/App'
+  getUserDetail,
+  dropUser,
+  changeUserPassword,
+  grantPrivileges,
+  revokePrivileges,
+} from '../lib/api'
 
 const props = defineProps<{
   tabId: string
@@ -19,7 +19,7 @@ const emit = defineEmits<{
   (e: 'user-changed'): void
 }>()
 
-const detail = ref<database.UserDetail | null>(null)
+const detail = ref<UserDetail | null>(null)
 const loading = ref(false)
 const error = ref('')
 const activeTab = ref<'grants' | 'password' | 'grant' | 'revoke'>('grants')
@@ -57,7 +57,7 @@ async function loadDetail() {
   loading.value = true
   error.value = ''
   try {
-    detail.value = await GetUserDetail(props.tabId, props.user, props.host)
+    detail.value = await getUserDetail(props.tabId, props.user, props.host)
   } catch (e: any) {
     error.value = e?.message || String(e)
     detail.value = null
@@ -69,7 +69,7 @@ async function loadDetail() {
 async function handleDropUser() {
   if (!confirm(`Drop user '${props.user}'@'${props.host}'? This cannot be undone.`)) return
   try {
-    await DropUser(props.tabId, props.user, props.host)
+    await dropUser(props.tabId, props.user, props.host)
     emit('user-changed')
   } catch (e: any) {
     error.value = e?.message || String(e)
@@ -84,7 +84,7 @@ async function handleChangePassword() {
     return
   }
   try {
-    await ChangeUserPassword(props.tabId, props.user, props.host, newPassword.value)
+    await changeUserPassword(props.tabId, props.user, props.host, newPassword.value)
     passwordMsg.value = 'Password changed successfully'
     newPassword.value = ''
   } catch (e: any) {
@@ -100,7 +100,7 @@ async function handleGrant() {
     return
   }
   try {
-    await GrantPrivileges(props.tabId, props.user, props.host, grantPrivs.value, grantOn.value)
+    await grantPrivileges(props.tabId, props.user, props.host, grantPrivs.value, grantOn.value)
     grantMsg.value = 'Privileges granted'
     await loadDetail()
   } catch (e: any) {
@@ -116,7 +116,7 @@ async function handleRevoke() {
     return
   }
   try {
-    await RevokePrivileges(props.tabId, props.user, props.host, revokePrivs.value, revokeOn.value)
+    await revokePrivileges(props.tabId, props.user, props.host, revokePrivs.value, revokeOn.value)
     revokeMsg.value = 'Privileges revoked'
     await loadDetail()
   } catch (e: any) {

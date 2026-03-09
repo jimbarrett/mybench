@@ -1,16 +1,16 @@
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { database } from './wailsjs/go/models'
+import type { QueryResult } from './lib/types'
 import {
-  HasMasterPassword,
-  SetMasterPassword,
-  UnlockVault,
-  ExecuteQuery,
-  ExplainQuery,
-  CancelQuery,
-  GetSchemaCompletions,
-  ImportSQL,
-} from './wailsjs/go/main/App'
+  getVaultStatus,
+  createVault,
+  unlockVault,
+  executeQuery,
+  explainQuery,
+  cancelQuery,
+  getSchemaCompletions,
+  importSQL,
+} from './lib/api'
 import MasterPasswordDialog from './components/MasterPasswordDialog.vue'
 import Sidebar from './components/Sidebar.vue'
 import TabBar from './components/TabBar.vue'
@@ -32,7 +32,7 @@ const activeTabId = ref('')
 const connectedName = ref('')
 
 // Query results
-const queryResults = ref<database.QueryResult[] | null>(null)
+const queryResults = ref<QueryResult[] | null>(null)
 const queryRunning = ref(false)
 
 // Schema completions for editor autocomplete
@@ -166,8 +166,8 @@ onMounted(async () => {
   ;(window as any).__mybenchSaveInterval = saveInterval
 
   try {
-    const hasPw = await HasMasterPassword()
-    needsNewPassword.value = !hasPw
+    const status = await getVaultStatus()
+    needsNewPassword.value = !status.hasMasterPassword
     showPasswordDialog.value = true
   } catch (e) {
     console.error('Failed to check master password:', e)
@@ -185,12 +185,12 @@ onUnmounted(() => {
 async function handlePassword(password: string) {
   try {
     if (needsNewPassword.value) {
-      await SetMasterPassword(password)
+      await createVault(password)
       unlocked.value = true
       showPasswordDialog.value = false
     } else {
-      const ok = await UnlockVault(password)
-      if (ok) {
+      const result = await unlockVault(password)
+      if (result.ok) {
         unlocked.value = true
         showPasswordDialog.value = false
       }
@@ -210,7 +210,7 @@ async function onConnected(profileId: string, tabId: string) {
 
   // Fetch schema for autocomplete in the background
   try {
-    schemaCompletions.value = await GetSchemaCompletions(tabId)
+    schemaCompletions.value = await getSchemaCompletions(tabId)
   } catch (e: any) {
     addToast('Failed to load autocomplete data', 'error')
   }
@@ -273,19 +273,30 @@ function onImportCSVDone(rows: number) {
   showImportCSV.value = false
 }
 
-async function handleImportSQL() {
+function handleImportSQL() {
   if (!activeTabId.value) return
-  importSQLRunning.value = true
-  try {
-    const stmts = await ImportSQL(activeTabId.value)
-    if (stmts > 0) {
-      queryResults.value = [{ error: '', isSelect: false, affectedRows: stmts, rowCount: 0, columns: [], rows: [], duration: '' } as any]
+  // Create a file input to select the SQL file
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.sql'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    importSQLRunning.value = true
+    try {
+      const result = await importSQL(activeTabId.value, file)
+      if (result.error) {
+        queryResults.value = [{ error: result.error } as any]
+      } else if (result.statements > 0) {
+        queryResults.value = [{ error: '', isSelect: false, affectedRows: result.statements, rowCount: 0, columns: [], rows: [], duration: '' } as any]
+      }
+    } catch (e: any) {
+      queryResults.value = [{ error: e?.message || String(e) } as any]
+    } finally {
+      importSQLRunning.value = false
     }
-  } catch (e: any) {
-    queryResults.value = [{ error: e?.message || String(e) } as any]
-  } finally {
-    importSQLRunning.value = false
   }
+  input.click()
 }
 
 async function handleExecute(sql: string) {
@@ -295,9 +306,9 @@ async function handleExecute(sql: string) {
   queryRunning.value = true
   editorRef.value?.setRunning(true)
   try {
-    queryResults.value = await ExecuteQuery(activeTabId.value, sql)
+    queryResults.value = await executeQuery(activeTabId.value, sql)
   } catch (e: any) {
-    queryResults.value = [{ error: e?.message || String(e) } as database.QueryResult]
+    queryResults.value = [{ error: e?.message || String(e) } as QueryResult]
   } finally {
     queryRunning.value = false
     editorRef.value?.setRunning(false)
@@ -311,10 +322,10 @@ async function handleExplain(sql: string) {
   queryRunning.value = true
   editorRef.value?.setRunning(true)
   try {
-    const result = await ExplainQuery(activeTabId.value, sql)
+    const result = await explainQuery(activeTabId.value, sql)
     queryResults.value = [result]
   } catch (e: any) {
-    queryResults.value = [{ error: e?.message || String(e) } as database.QueryResult]
+    queryResults.value = [{ error: e?.message || String(e) } as QueryResult]
   } finally {
     queryRunning.value = false
     editorRef.value?.setRunning(false)
@@ -324,7 +335,7 @@ async function handleExplain(sql: string) {
 async function handleCancel() {
   if (!activeTabId.value) return
   try {
-    await CancelQuery(activeTabId.value)
+    await cancelQuery(activeTabId.value)
   } catch (e: any) {
     addToast('Cancel failed: ' + (e?.message || String(e)), 'error')
   }

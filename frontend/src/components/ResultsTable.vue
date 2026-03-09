@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
-import { database } from '../wailsjs/go/models'
-import { ExportResultsCSV, ExportResultsSQL } from '../wailsjs/go/main/App'
+import type { QueryResult } from '../lib/types'
+import { exportResultsCSV, exportResultsSQL } from '../lib/api'
 
 const props = defineProps<{
-  results?: database.QueryResult[] | null
+  results?: QueryResult[] | null
   loading?: boolean
 }>()
 
@@ -81,8 +81,7 @@ async function exportCSV() {
   if (!result?.columns || !result?.rows) return
   exporting.value = true
   try {
-    const path = await ExportResultsCSV(result.columns, result.rows)
-    if (path) console.log('Exported to', path)
+    await exportResultsCSV(result.columns, result.rows)
   } catch (e: any) {
     console.error('Export failed:', e)
   } finally {
@@ -95,8 +94,7 @@ async function exportSQL() {
   if (!result?.columns || !result?.rows) return
   exporting.value = true
   try {
-    const path = await ExportResultsSQL('table_name', result.columns, result.rows)
-    if (path) console.log('Exported to', path)
+    await exportResultsSQL('table_name', result.columns, result.rows)
   } catch (e: any) {
     console.error('Export failed:', e)
   } finally {

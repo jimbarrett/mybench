@@ -1,20 +1,20 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
-import { main } from '../wailsjs/go/models'
+import type { ConnectionProfile } from '../lib/types'
 import {
-  ListConnections,
-  SaveConnection,
-  DeleteConnection,
-  Connect,
-  Disconnect,
-} from '../wailsjs/go/main/App'
+  listConnections,
+  saveConnection,
+  deleteConnection,
+  connect,
+  disconnect,
+} from '../lib/api'
 import ConnectionFormDialog from './ConnectionFormDialog.vue'
 import SchemaTree from './SchemaTree.vue'
 
-const connections = ref<main.ConnectionProfile[]>([])
+const connections = ref<ConnectionProfile[]>([])
 const activeConns = ref<Record<string, boolean>>({})
 const showForm = ref(false)
-const editingConnection = ref<main.ConnectionProfile | null>(null)
+const editingConnection = ref<ConnectionProfile | null>(null)
 const selectedProfileId = ref<string>('')
 
 const emit = defineEmits<{
@@ -32,7 +32,7 @@ onMounted(async () => {
 
 async function loadConnections() {
   try {
-    connections.value = await ListConnections()
+    connections.value = await listConnections()
   } catch (e) {
     console.error('Failed to load connections:', e)
   }
@@ -43,14 +43,14 @@ function openNewForm() {
   showForm.value = true
 }
 
-function openEditForm(conn: main.ConnectionProfile) {
+function openEditForm(conn: ConnectionProfile) {
   editingConnection.value = conn
   showForm.value = true
 }
 
-async function handleSave(conn: main.ConnectionProfile) {
+async function handleSave(conn: ConnectionProfile) {
   try {
-    await SaveConnection(conn)
+    await saveConnection(conn)
     showForm.value = false
     editingConnection.value = null
     await loadConnections()
@@ -61,10 +61,10 @@ async function handleSave(conn: main.ConnectionProfile) {
 
 async function handleDelete(id: string) {
   try {
-    await DeleteConnection(id)
+    await deleteConnection(id)
     if (activeConns.value[id]) {
       const tabId = 'tab-' + id
-      await Disconnect(tabId)
+      await disconnect(tabId)
       activeConns.value[id] = false
       emit('disconnected', id)
     }
@@ -74,10 +74,10 @@ async function handleDelete(id: string) {
   }
 }
 
-async function handleConnect(profile: main.ConnectionProfile) {
+async function handleConnect(profile: ConnectionProfile) {
   const tabId = 'tab-' + profile.id
   try {
-    await Connect(tabId, profile.id)
+    await connect(tabId, profile.id)
     activeConns.value[profile.id] = true
     selectedProfileId.value = profile.id
     emit('connected', profile.id, tabId)
@@ -90,7 +90,7 @@ async function handleConnect(profile: main.ConnectionProfile) {
 async function handleDisconnect(profileId: string) {
   const tabId = 'tab-' + profileId
   try {
-    await Disconnect(tabId)
+    await disconnect(tabId)
   } catch (e) {
     console.error('Disconnect failed:', e)
   }

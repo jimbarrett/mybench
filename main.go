@@ -1,19 +1,19 @@
 package main
 
 import (
-	"embed"
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"mybench/internal/api"
+	"mybench/internal/database"
+	"mybench/internal/store"
 	"mybench/internal/update"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/pkg/browser"
 )
-
-//go:embed all:frontend/dist
-var assets embed.FS
 
 var version = "dev"
 
@@ -29,29 +29,53 @@ func main() {
 		}
 	}
 
-	app := NewApp(version)
-
-	err := wails.Run(&options.App{
-		Title:     "mybench",
-		Width:     1280,
-		Height:    800,
-		MinWidth:  900,
-		MinHeight: 600,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		// Tokyo Night --bg-primary: #1a1b26
-		BackgroundColour: &options.RGBA{R: 26, G: 27, B: 38, A: 255},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Bind: []interface{}{
-			app,
-		},
-	})
-
-	if err != nil {
-		println("Error:", err.Error())
+	// Default: start the web server
+	port := "8080"
+	openBrowser := true
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "--no-browser":
+			openBrowser = false
+		default:
+			port = arg
+		}
 	}
+
+	if err := cmdServe(port, openBrowser); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdServe(port string, openBrowser bool) error {
+	s, err := store.New()
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+
+	connMgr := database.NewManager()
+	h := api.NewHandlers(version, s, connMgr)
+	defer h.Shutdown()
+
+	if openBrowser {
+		url := fmt.Sprintf("http://localhost:%s", port)
+		if err := browser.OpenURL(url); err != nil {
+			fmt.Fprintf(os.Stderr, "Could not open browser: %v\n", err)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-sigCh
+		fmt.Println("\nShutting down...")
+		cancel()
+	}()
+
+	return api.StartServer(ctx, h, port)
 }
 
 func cmdVersion() {

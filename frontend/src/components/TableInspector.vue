@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { database } from '../wailsjs/go/models'
-import { GetTableDetail, ExportTableCSV, ExportTableSQL } from '../wailsjs/go/main/App'
+import type { TableDetail } from '../lib/types'
+import { getTableDetail, exportTableCSV, exportTableSQL } from '../lib/api'
 
 const props = defineProps<{
   tabId: string
@@ -9,7 +9,7 @@ const props = defineProps<{
   table: string
 }>()
 
-const detail = ref<database.TableDetail | null>(null)
+const detail = ref<TableDetail | null>(null)
 const loading = ref(false)
 const error = ref('')
 const activeTab = ref<'columns' | 'indexes' | 'fkeys' | 'ddl'>('columns')
@@ -24,7 +24,7 @@ watch(
     loading.value = true
     error.value = ''
     try {
-      detail.value = await GetTableDetail(props.tabId, props.database, props.table)
+      detail.value = await getTableDetail(props.tabId, props.database, props.table)
     } catch (e: any) {
       error.value = e?.message || String(e)
       detail.value = null
@@ -47,7 +47,7 @@ const exporting = ref(false)
 async function exportCSV() {
   exporting.value = true
   try {
-    await ExportTableCSV(props.tabId, props.database, props.table)
+    exportTableCSV(props.tabId, props.database, props.table)
   } catch (e: any) {
     console.error('Export failed:', e)
   } finally {
@@ -58,7 +58,7 @@ async function exportCSV() {
 async function exportSQL() {
   exporting.value = true
   try {
-    await ExportTableSQL(props.tabId, props.database, props.table)
+    exportTableSQL(props.tabId, props.database, props.table)
   } catch (e: any) {
     console.error('Export failed:', e)
   } finally {

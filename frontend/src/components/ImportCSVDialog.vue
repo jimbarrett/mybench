@@ -1,14 +1,13 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { main, database } from '../wailsjs/go/models'
+import type { CSVImportPreview, DatabaseInfo, TableInfo, ColumnMapping } from '../lib/types'
 import {
-  ImportOpenCSV,
-  ImportCSV,
-  GetTableColumns,
-  GetDatabases,
-  GetTables,
-} from '../wailsjs/go/main/App'
-import { EventsOn } from '../wailsjs/runtime/runtime'
+  importCSVPreview,
+  importCSV,
+  getTableColumns,
+  getDatabases,
+  getTables,
+} from '../lib/api'
 
 const props = defineProps<{
   tabId: string
@@ -23,12 +22,12 @@ const emit = defineEmits<{
 const step = ref<'pick-file' | 'map-columns' | 'importing' | 'done'>('pick-file')
 
 // File preview data
-const preview = ref<main.CSVImportPreview | null>(null)
+const preview = ref<CSVImportPreview | null>(null)
 const error = ref('')
 
 // Target table selection
-const databases = ref<database.DatabaseInfo[]>([])
-const tables = ref<database.TableInfo[]>([])
+const databases = ref<DatabaseInfo[]>([])
+const tables = ref<TableInfo[]>([])
 const selectedDb = ref('')
 const selectedTable = ref('')
 const tableColumns = ref<string[]>([])
@@ -40,38 +39,48 @@ const mappings = ref<string[]>([])
 const importProgress = ref({ current: 0, total: 0 })
 const importResult = ref({ rows: 0, error: '' })
 
-let cleanupProgress: (() => void) | null = null
+let evtSource: EventSource | null = null
 
 onMounted(async () => {
   // Load databases for target selection
   try {
-    databases.value = await GetDatabases(props.tabId) || []
+    databases.value = await getDatabases(props.tabId) || []
   } catch (e) {
     console.error('Failed to load databases:', e)
   }
 
-  // Listen for progress events
-  cleanupProgress = EventsOn('import-progress', (data: any) => {
+  // Listen for progress events via SSE
+  evtSource = new EventSource(`/api/tabs/${props.tabId}/events`)
+  evtSource.addEventListener('import-progress', (e: MessageEvent) => {
+    const data = JSON.parse(e.data)
     importProgress.value = { current: data.current || 0, total: data.total || 0 }
   })
 })
 
 onUnmounted(() => {
-  if (cleanupProgress) cleanupProgress()
+  if (evtSource) evtSource.close()
 })
 
-async function pickFile() {
+function pickFile() {
   error.value = ''
-  try {
-    const result = await ImportOpenCSV()
-    if (!result) return // cancelled
-    preview.value = result
-    // Initialize mappings (all empty)
-    mappings.value = (result.headers || []).map(() => '')
-    step.value = 'map-columns'
-  } catch (e: any) {
-    error.value = e?.message || String(e)
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.csv'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    try {
+      const result = await importCSVPreview(props.tabId, file)
+      if (!result) return
+      preview.value = result
+      // Initialize mappings (all empty)
+      mappings.value = (result.headers || []).map(() => '')
+      step.value = 'map-columns'
+    } catch (e: any) {
+      error.value = e?.message || String(e)
+    }
   }
+  input.click()
 }
 
 async function onDbChange() {
@@ -81,7 +90,7 @@ async function onDbChange() {
     return
   }
   try {
-    tables.value = await GetTables(props.tabId, selectedDb.value) || []
+    tables.value = await getTables(props.tabId, selectedDb.value) || []
   } catch (e) {
     console.error('Failed to load tables:', e)
   }
@@ -93,7 +102,7 @@ async function onTableChange() {
     return
   }
   try {
-    tableColumns.value = await GetTableColumns(props.tabId, selectedDb.value, selectedTable.value) || []
+    tableColumns.value = await getTableColumns(props.tabId, selectedDb.value, selectedTable.value) || []
     // Auto-map by matching header names (case-insensitive)
     if (preview.value) {
       mappings.value = preview.value.headers.map(h => {
@@ -117,25 +126,29 @@ async function startImport() {
   importProgress.value = { current: 0, total: preview.value.totalRows }
 
   // Build column mapping array
-  const colMappings: database.ColumnMapping[] = []
+  const colMappings: ColumnMapping[] = []
   for (let i = 0; i < mappings.value.length; i++) {
     if (mappings.value[i]) {
-      colMappings.push(new database.ColumnMapping({
+      colMappings.push({
         csvIndex: i,
         columnName: mappings.value[i],
-      }))
+      })
     }
   }
 
   try {
-    const rows = await ImportCSV(
+    const result = await importCSV(
       props.tabId,
       selectedDb.value,
       selectedTable.value,
       preview.value.filePath,
       colMappings,
     )
-    importResult.value = { rows, error: '' }
+    if (result.error) {
+      importResult.value = { rows: result.rows, error: result.error }
+    } else {
+      importResult.value = { rows: result.rows, error: '' }
+    }
     step.value = 'done'
   } catch (e: any) {
     importResult.value = { rows: importProgress.value.current, error: e?.message || String(e) }

@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { database } from '../wailsjs/go/models'
+import type { TableInfo, RoutineInfo, TriggerInfo, UserInfo } from '../lib/types'
 import {
-  GetDatabases,
-  GetTables,
-  GetRoutines,
-  GetTriggers,
-  ListUsers,
-} from '../wailsjs/go/main/App'
+  getDatabases,
+  getTables,
+  getRoutines,
+  getTriggers,
+  listUsers,
+} from '../lib/api'
 
 const props = defineProps<{
   tabId: string
@@ -25,9 +25,9 @@ interface DbNode {
   name: string
   expanded: boolean
   loading: boolean
-  tables: database.TableInfo[]
-  routines: database.RoutineInfo[]
-  triggers: database.TriggerInfo[]
+  tables: TableInfo[]
+  routines: RoutineInfo[]
+  triggers: TriggerInfo[]
   tablesExpanded: boolean
   viewsExpanded: boolean
   routinesExpanded: boolean
@@ -39,7 +39,7 @@ const loading = ref(false)
 const error = ref('')
 
 // Users state
-const users = ref<database.UserInfo[]>([])
+const users = ref<UserInfo[]>([])
 const usersExpanded = ref(false)
 const usersLoading = ref(false)
 const selectedUser = ref<{ user: string, host: string } | null>(null)
@@ -60,7 +60,7 @@ async function loadDatabases() {
   loading.value = true
   error.value = ''
   try {
-    const dbs = await GetDatabases(props.tabId)
+    const dbs = await getDatabases(props.tabId)
     databases.value = (dbs || []).map(db => ({
       name: db.name,
       expanded: false,
@@ -86,9 +86,9 @@ async function toggleDb(db: DbNode) {
     db.loading = true
     try {
       const [tables, routines, triggers] = await Promise.all([
-        GetTables(props.tabId, db.name),
-        GetRoutines(props.tabId, db.name),
-        GetTriggers(props.tabId, db.name),
+        getTables(props.tabId, db.name),
+        getRoutines(props.tabId, db.name),
+        getTriggers(props.tabId, db.name),
       ])
       db.tables = tables || []
       db.routines = routines || []
@@ -102,11 +102,11 @@ async function toggleDb(db: DbNode) {
   }
 }
 
-function tables(db: DbNode): database.TableInfo[] {
+function tables(db: DbNode): TableInfo[] {
   return db.tables.filter(t => t.type === 'BASE TABLE')
 }
 
-function views(db: DbNode): database.TableInfo[] {
+function views(db: DbNode): TableInfo[] {
   return db.tables.filter(t => t.type === 'VIEW')
 }
 
@@ -130,7 +130,7 @@ async function loadUsers() {
   if (!props.tabId) return
   usersLoading.value = true
   try {
-    users.value = await ListUsers(props.tabId) || []
+    users.value = await listUsers(props.tabId) || []
   } catch (e: any) {
     console.error('Failed to load users:', e)
   } finally {

@@ -20,6 +20,16 @@ const (
 	argonParts = 4
 )
 
+// EncodeSalt returns the base64 encoding of a salt.
+func EncodeSalt(salt []byte) string {
+	return base64.StdEncoding.EncodeToString(salt)
+}
+
+// DecodeSalt decodes a base64-encoded salt.
+func DecodeSalt(s string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(s)
+}
+
 // Vault holds the derived encryption key in memory.
 type Vault struct {
 	key []byte

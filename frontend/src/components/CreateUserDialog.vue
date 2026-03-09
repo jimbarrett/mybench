@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { CreateUser } from '../wailsjs/go/main/App'
+import { createUser } from '../lib/api'
 
 const props = defineProps<{
   tabId: string
@@ -36,7 +36,7 @@ async function handleSubmit() {
 
   saving.value = true
   try {
-    await CreateUser(props.tabId, username.value.trim(), host.value, password.value, plugin.value)
+    await createUser(props.tabId, username.value.trim(), host.value, password.value, plugin.value)
     emit('created')
   } catch (e: any) {
     error.value = e?.message || String(e)

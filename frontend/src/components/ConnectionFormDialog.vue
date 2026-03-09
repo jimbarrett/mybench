@@ -1,35 +1,19 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import { main } from '../wailsjs/go/models'
-import { TestConnection } from '../wailsjs/go/main/App'
+import type { ConnectionProfile } from '../lib/types'
+import { newConnectionProfile } from '../lib/types'
+import { testConnection } from '../lib/api'
 
 const props = defineProps<{
-  connection?: main.ConnectionProfile | null
+  connection?: ConnectionProfile | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'save', conn: main.ConnectionProfile): void
+  (e: 'save', conn: ConnectionProfile): void
   (e: 'cancel'): void
 }>()
 
-const form = ref<main.ConnectionProfile>(new main.ConnectionProfile({
-  id: '',
-  name: '',
-  host: '127.0.0.1',
-  port: 3306,
-  username: 'root',
-  password: '',
-  defaultDb: '',
-  useSsl: false,
-  sshEnabled: false,
-  sshHost: '',
-  sshPort: 22,
-  sshUser: '',
-  sshAuth: 'key',
-  sshKeyPath: '',
-  sshPassword: '',
-  sortOrder: 0,
-}))
+const form = ref<ConnectionProfile>(newConnectionProfile())
 
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; message: string } | null>(null)
@@ -37,7 +21,7 @@ const error = ref('')
 
 watch(() => props.connection, (conn) => {
   if (conn) {
-    form.value = new main.ConnectionProfile({ ...conn })
+    form.value = newConnectionProfile({ ...conn })
   }
 }, { immediate: true })
 
@@ -61,7 +45,7 @@ async function testConn() {
   error.value = ''
 
   try {
-    await TestConnection(form.value)
+    await testConnection(form.value)
     testResult.value = { ok: true, message: 'Connection successful' }
   } catch (e: any) {
     testResult.value = { ok: false, message: e?.message || String(e) }
