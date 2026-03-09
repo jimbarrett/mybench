@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/pkg/browser"
 )
+
+const defaultPort = 10200
 
 var version = "dev"
 
@@ -30,7 +33,7 @@ func main() {
 	}
 
 	// Default: start the web server
-	port := "8080"
+	port := ""
 	openBrowser := true
 	for _, arg := range os.Args[1:] {
 		switch arg {
@@ -39,6 +42,15 @@ func main() {
 		default:
 			port = arg
 		}
+	}
+
+	if port == "" {
+		found, err := findAvailablePort(defaultPort)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		port = fmt.Sprintf("%d", found)
 	}
 
 	if err := cmdServe(port, openBrowser); err != nil {
@@ -131,4 +143,18 @@ func cmdUpdate() {
 	}
 
 	fmt.Printf("Updated to %s successfully.\n", info.LatestVersion)
+}
+
+// findAvailablePort tries ports starting at startPort and returns the first
+// one that is available. It checks up to 100 ports before giving up.
+func findAvailablePort(startPort int) (int, error) {
+	for port := startPort; port < startPort+100; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			continue
+		}
+		ln.Close()
+		return port, nil
+	}
+	return 0, fmt.Errorf("no available port found in range %d-%d", startPort, startPort+99)
 }
