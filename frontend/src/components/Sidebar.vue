@@ -16,6 +16,7 @@ const activeConns = ref<Record<string, boolean>>({})
 const showForm = ref(false)
 const editingConnection = ref<ConnectionProfile | null>(null)
 const selectedProfileId = ref<string>('')
+const appVersion = ref('')
 
 const emit = defineEmits<{
   (e: 'connected', profileId: string, tabId: string): void
@@ -28,6 +29,11 @@ const emit = defineEmits<{
 
 onMounted(async () => {
   await loadConnections()
+  try {
+    const res = await fetch('/api/ping')
+    const data = await res.json()
+    if (data.version) appVersion.value = data.version
+  } catch {}
 })
 
 async function loadConnections() {
@@ -136,7 +142,7 @@ defineExpose({ loadConnections, refreshUsers })
   <aside class="sidebar">
     <div class="sidebar-header">
       <h1 class="app-title">mybench</h1>
-      <span class="version">v0.1.0</span>
+      <span v-if="appVersion" class="version">{{ appVersion }}</span>
     </div>
 
     <div class="sidebar-section">
